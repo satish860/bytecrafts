@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { buttonVariants } from './ui/button';
 import { MainNav } from './mainnav';
-// import { MobileNav } from './mobile-nav';
-// import { ModeToggle } from './mode-toggle';
+import { MobileNav } from './mobile-nav';
+import { ModeToggle } from './mode-toggle';
 import { Github, Twitter, Linkedin } from 'lucide-react';
 
 const Header: React.FC = () => {
@@ -50,8 +50,8 @@ const Header: React.FC = () => {
                 <span className="sr-only">LinkedIn</span>
               </div>
             </Link>
-            {/* <ModeToggle />
-            <MobileNav /> */}
+             <ModeToggle />
+            <MobileNav /> 
           </nav>
         </div>
       </div>

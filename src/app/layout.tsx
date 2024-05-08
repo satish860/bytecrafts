@@ -4,6 +4,8 @@ import "./globals.css";
 
 import { cn } from "@/lib/utils";
 import Header from "@/components/Header";
+import { ThemeProvider } from "@/components/theme-provider"
+import { ModeToggle } from "@/components/mode-toggle";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -28,10 +30,18 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
         <div className="relative flex min-h-dvh flex-col bg-background">
           <Header />
+          
           <main className="flex-1">{children}</main>
         </div>
+        </ThemeProvider>
       </body>
     </html>
   );
