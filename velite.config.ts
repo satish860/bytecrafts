@@ -1,4 +1,7 @@
 import { defineConfig, s } from 'velite'
+import rehypeSlug from "rehype-slug";
+import rehypePrettyCode from "rehype-pretty-code";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 // `s` is extended from Zod with some custom schemas,
 // you can also import re-exported `z` from `velite` if you don't need these extension schemas.
@@ -25,6 +28,22 @@ export default defineConfig({
         // more additional fields (computed fields)
         .transform(data => ({ ...data, permalink: `/blog/${data.slug}` }))
     },
-   
-  }
+  },
+  mdx: {
+    rehypePlugins: [
+      rehypeSlug,
+      [rehypePrettyCode, { theme: "github-dark" }],
+      [
+        rehypeAutolinkHeadings,
+        {
+          behavior: "wrap",
+          properties: {
+            className: ["subheading-anchor"],
+            ariaLabel: "Link to section",
+          },
+        },
+      ],
+    ],
+    remarkPlugins: [],
+  },
 })
