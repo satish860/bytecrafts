@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "title": "Hello world",
+    "slug": "hello-world",
+    "date": "1992-02-25T07:52:00.000Z",
+    "content": "const{jsx:n}=arguments[0];function _createMdxContent(e){const t={p:\"p\",...e.components};return n(t.p,{children:\"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse\"})}return{default:function(e={}){const{wrapper:t}=e.components||{};return t?n(t,{...e,children:n(_createMdxContent,{...e})}):_createMdxContent(e)}};",
+    "published": true,
+    "description": "This is our first blog post. Really cool",
+    "permalink": "/blog/hello-world"
+  }
+]

@@ -7,7 +7,7 @@ export default defineConfig({
   collections: {
     posts: {
       name: 'Post', // collection type name
-      pattern: 'posts/**/*.md', // content files glob pattern
+      pattern: 'posts/**/*.mdx', // content files glob pattern
       schema: s
         .object({
           title: s.string().max(99), // Zod primitive type
@@ -18,7 +18,7 @@ export default defineConfig({
           // video: s.file().optional(), // input file relative path, output file public path.
           // metadata: s.metadata(), // extract markdown reading-time, word-count, etc.
          //  excerpt: s.excerpt(), // excerpt of markdown content
-          content: s.markdown(), // transform markdown to html
+          content: s.mdx(), // transform markdown to html
           published: s.boolean(),
           description: s.string()
         })
