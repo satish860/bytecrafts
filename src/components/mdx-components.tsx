@@ -15,7 +15,6 @@ interface MdxProps {
 }
 
 export function MDXContent({ code }: MdxProps) {
-  console.log(code)
   const Component = useMDXComponent(code);
   return <Component components={components} />;
 }
