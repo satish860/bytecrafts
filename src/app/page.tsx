@@ -15,7 +15,7 @@ export default function Home() {
             Hello, I&apos;m Satish
           </h1>
           <p className="max-w-[42rem] mx-auto text-muted-foreground sm:text-xl text-balance">
-            Welcome to my blog. Here I write about my Journey with the Latest technology.
+          Writing is how I make sense of the world. Here I share my musings on tech, startups, and life lessons learned along the way.
           </p>
           <div className="flex flex-col gap-4 justify-center sm:flex-row">
             <Link
