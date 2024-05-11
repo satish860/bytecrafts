@@ -23,5 +23,6 @@ export default defineConfig({
         // more additional fields (computed fields)
         .transform(data => ({ ...data, permalink: `/blog/${data.slug}` }))
     },
+   
   }
 })
