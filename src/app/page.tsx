@@ -44,9 +44,9 @@ export default function Home() {
         </h2>
         <ul className="flex flex-col">
           {latestPosts.map((post) => (
-            <li key={post.slug} className="first:border-t first:border-border">
+            <li key={post.permalink} className="first:border-t first:border-border">
               <PostItem
-                slug={post.slug}
+                slug={post.permalink}
                 title={post.title}
                 description={post.description}
                 date={post.date}
