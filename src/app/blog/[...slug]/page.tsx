@@ -19,7 +19,8 @@ async function getPostFromParams(params: PostPageProps["params"]) {
 export async function generateStaticParams(): Promise<
   PostPageProps["params"][]
 > {
-  return posts.map((post) => ({ slug: post.permalink.split("/") }));
+   
+  return posts.map((post) => ({ slug: post.slug.split("/") }));
 }
 
 export default async function PostPage({ params }: PostPageProps) {
