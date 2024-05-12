@@ -2,6 +2,12 @@ import { posts } from "#site/content";
 import { PostItem } from "@/components/post-item";
 import { sortPosts } from "@/lib/utils";
 import { QueryPagination } from "@/components/query-pagination";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Satish ByteCrafts",
+  description: "Writing is how I make sense of the world. Here I share my musings on tech, startups, and life lessons learned along the way.",
+};
 
 
 const POSTS_PER_PAGE = 5;

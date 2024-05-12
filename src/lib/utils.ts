@@ -11,7 +11,7 @@ export const siteConfig = {
   name: "ByteCrafts",
   url: "https://example.com",
   description:
-    "Personal Blog of Satish - Writes and Teaches about Technology in General",
+    "Writing is how I make sense of the world. Here I share my musings on tech, startups, and life lessons learned along the way.",
   author: "Satish",
   links: {
     twitter: "https://twitter.com/satish1v",
