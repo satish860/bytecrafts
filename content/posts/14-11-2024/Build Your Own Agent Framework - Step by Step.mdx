@@ -1,0 +1,216 @@
+---
+title: "Build Your Own Agent Framework - Step by Step"
+slug: build-your-own-agent-framework-step-by-step
+date: 2024-11-14 09:00
+published: true
+description: A step by step guide to building your own Agent Framework.
+---
+
+Best way to learn is by doing. So lets our build our own Agent Framework like OpenAI Swarm. Well we need to start small. 
+
+> #### Pre-requisites
+
+> #### I assume you have some knowledge of Python and used a OpenAI API. If not you can follow the [Getting Started Guide](https://platform.openai.com/docs/api-reference/introduction)
+
+Now that the pre-requisites are out of the way, we can start building our own Agent Framework.
+
+### So What is a Agent ?
+My own take is the Agents are something which can take an input, perform some task and return a output. Simple as that. If you want to get the latest news from the web, LLM doesnt have the capability to do that. But a agent can browse the web, read the news and then tell you the latest news.
+
+> Yes there is many other definitions of Agent, but for now lets stick with my definition for making a framework. We will talk about memory and other things in later posts.
+
+So how can you build a Agent. Well there are many ways to do that. But the most popular way is to use LLMs with function calling capabilities.
+
+# Function Calling
+
+LLMs a Passive responders, You ask a question and they respond. But with function calling capabilities, you can ask it to respond if it knows the answer else ask it to use the tools like web search, database lookup, etc. Then it can use the tools to get the answer and then return the answer.
+
+Rather than explaining the theory, lets jump into the code.
+
+```
+! pip install openai 
+```
+
+Now we need to setup the OpenAI API key. You can get your API key from [here](https://platform.openai.com/api-keys)
+
+```
+import openai
+
+openai.api_key = "sk-proj-your-openai-api-key"
+```
+
+Now we need to create a function calling agent with defining a simple function which can search the web. You can use any API to search the web. I am using [YDC-Index](https://ydc-index.io/) for this example. Its You.com search API.
+
+```
+import requests
+
+def get_ai_snippets_for_query(query):
+    headers = {"X-API-Key": "your-api-key"}
+    params = {"query": query}
+    return requests.get(
+        f"https://api.ydc-index.io/search?query={query}",
+        params=params,
+        headers=headers,
+    ).json()
+results = get_ai_snippets_for_query("What is the latest news in india")
+print(results)
+
+```
+
+Now we need to introduce this function to LLM. But how can we do that, Well you need to convert the function into a string and then pass it to LLM. So let me define a function to convert the function into a string.
+
+```
+import inspect
+
+def function_to_json(func) -> dict:
+    """
+    Converts a Python function into a JSON-serializable dictionary
+    that describes the function's signature, including its name,
+    description, and parameters.
+
+    Args:
+        func: The function to be converted.
+
+    Returns:
+        A dictionary representing the function's signature in JSON format.
+    """
+    type_map = {
+        str: "string",
+        int: "integer",
+        float: "number",
+        bool: "boolean",
+        list: "array",
+        dict: "object",
+        type(None): "null",
+    }
+
+    try:
+        signature = inspect.signature(func)
+    except ValueError as e:
+        raise ValueError(
+            f"Failed to get signature for function {func.__name__}: {str(e)}"
+        )
+
+    parameters = {}
+    for param in signature.parameters.values():
+        try:
+            param_type = type_map.get(param.annotation, "string")
+        except KeyError as e:
+            raise KeyError(
+                f"Unknown type annotation {param.annotation} for parameter {param.name}: {str(e)}"
+            )
+        parameters[param.name] = {"type": param_type}
+
+    required = [
+        param.name
+        for param in signature.parameters.values()
+        if param.default == inspect._empty
+    ]
+
+    return {
+        "type": "function",
+        "function": {
+            "name": func.__name__,
+            "description": func.__doc__ or "",
+            "parameters": {
+                "type": "object",
+                "properties": parameters,
+                "required": required,
+            },
+        },
+    }
+```
+
+This utility can take any arbitrary function and convert it into a JSON Schema which can be used by LLM to call the function.
+
+Now we need to call this function to LLM.
+
+```
+websearch_tool = function_to_json(get_ai_snippets_for_query)
+```
+
+Now we need to create a system prompt and then call the LLM with the history and the tools.
+
+```
+import json
+
+
+SYSTEM_PROMPT = """
+You are a helpful assistant that can answer questions and help with tasks. If you need any information from the internet, you can use the tools provided to you.
+"""
+
+history = []
+history.append({"role": "system", "content": SYSTEM_PROMPT})
+history.append({"role": "user", "content": "What is the Latest news about Supreme court of india?"})
+
+response = openai.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=history,
+    tools=[websearch_tool]
+)
+
+message = response.choices[0].message
+
+print(message.model_dump_json())
+history.append(json.loads(message.model_dump_json()))
+```
+**Output:**
+
+Note the `tool_calls` key in the response. This is the tool call which we need to use to call the function. 
+```
+{"content":null,"refusal":null,"role":"assistant","audio":null,"function_call":null,"tool_calls":[{"id":"call_TQQ8Md20X9BJvSywhLvlAUTB","function":{"arguments":"{\"query\":\"Latest news Supreme Court of India\"}","name":"get_ai_snippets_for_query"},"type":"function"}]}
+```
+It contains the `id` of the tool call and the `function` which needs to be called. In this case I asked the LLM to provide a Latest news which in turn will make the LLM think and then call the `get_ai_snippets_for_query` function with the query as `Latest news Supreme Court of India`.
+
+Now we need to call the function with the tool call id and the arguments.
+
+```
+for tools in message.tool_calls:
+    args = json.loads(tools.function.arguments)
+    raw_result = get_ai_snippets_for_query(**args)
+    history.append({"role": "tool", "tool_call_id": tools.id,"tool_name":tools.function.name, "content": raw_result})
+
+```
+
+Now that we have the result from the tool, we need to append it to the history and then call the LLM again to get the final answer. 
+
+```
+function_response = openai.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=history,
+)
+
+print(function_response.choices[0].message.content)
+
+```
+
+**Output:**
+
+```
+Here are some of the latest developments and news regarding the Supreme Court of India:
+
+1. **Child Pornography Ruling**: The Supreme Court ruled that merely possessing child pornographic material constitutes a criminal offence. This decision underscores legal culpability for preparatory actions related to inchoate crimes.
+
+2. **Caste-Based Discrimination Ban**: A significant verdict from the Supreme Court has banned caste-based discrimination, specifically prohibiting practices such as the division of manual labor and segregation of prisoners belonging to de-notified tribes.
+
+3. **YouTube Channel Hack**: The Supreme Court's official YouTube channel was compromised, displaying unauthorized content instead of the usual court hearing live streams. YouTube has since acted to remove the hacked content.
+
+4. **Maternity Benefits Inquiry**: The Supreme Court has questioned why maternity benefits are only available to adoptive mothers if the adopted child is under three months old, seeking clarity from the Centre on this policy.
+
+5. **Stakeholders Consultation on Disabilities**: The Supreme Court announced a two-day National Annual Stakeholders Consultation focusing on the rights of children living with disabilities, set to take place on September 28-29, 2024.
+
+6. **Emissions Standards Compliance**: The Air Quality Panel has indicated to the Supreme Court that states need to comply with emissions standards in order to address pollution issues effectively.
+
+These updates highlight ongoing legal and social issues being addressed by the Supreme Court, reflecting its role in shaping human rights and governance in India.
+
+```
+
+Well that was simple. We just created a simple agent which can search the web and return the result. But this is just the beginning. We can add more tools and make it more powerful. We can also add memory to it so that it can remember the previous interactions.
+
+In the next post, we will create a another abstraction on top of this like a Agent calling a Another Agent which is called a Agent. 
+
+
+
+
+
+
