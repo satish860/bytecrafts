@@ -1,0 +1,210 @@
+---
+title: "Beyond Reterival: How Reasoning Models Can Reshape Research"
+slug: beyond-reterival
+date: 2025-01-30 09:00
+published: true
+description: Reasoning models are not your chat but a better research Planner and it can be a Top-Notch research Executors too. 
+---
+In the rapidly evolving landscape of AI applications, one challenge remains particularly complex: conducting thorough, well-structured research at scale. Traditional research methods often fall short when dealing with vast amounts of information, maintaining consistency, and ensuring comprehensive coverage of topics. Today, I'm excited to share our approach to solving this problem using a coordinated system of Large Language Models (LLMs), enhanced with **DeepSeek Reasoner** to improve logical coherence and research depth.
+
+## **The Role of Reasoning Models in Research**
+
+Anyone who has conducted extensive research knows the challenges:
+
+- **Information overload** and difficulty in maintaining focus
+- **Inconsistent methodology** across different research topics
+- **Limited ability to retain context** across multiple subtopics
+- **Time-consuming manual synthesis** of information
+- **Difficulty in maintaining citations and source tracking**
+
+Addressing these challenges requires more than just language models retrieving information; it necessitates **reasoning models** that can analyze, synthesize, and refine research dynamically. Reasoning models enhance LLM-based research by maintaining **logical coherence, identifying inconsistencies, and refining outputs through iterative improvements**.
+
+---
+
+## **A Reasoning-Driven Multi-LLM Architecture**
+
+Our solution implements a **three-tier architecture**, where each tier is handled by a specialized LLM:
+
+### **1. The Planner (DeepSeek)**
+
+Think of this as your research project manager. When given a research question, it:
+
+- Analyzes the complexity of the topic
+- Breaks down the research into manageable subtasks
+- Creates a structured execution plan
+- Defines clear success criteria for each step
+
+Here’s how the planner generates a structured research plan using DeepSeek:
+
+```python
+def call_planner(scenario):
+    deepseek_prompt = """You are an AI research planner. Your task is to break down a given research scenario into structured steps, ensuring logical flow and completeness."""
+    
+    prompt = f"""
+    {deepseek_prompt}
+    
+    Scenario:
+    {scenario}
+    
+    Please provide the next steps in your plan.
+    """
+    
+    client = OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com")
+    
+    response = client.chat.completions.create(
+        model="deepseek-reasoner",
+        messages=[{'role': 'user', 'content': prompt}],
+    )
+    
+    plan = response.choices[0].message.content
+    return plan
+```
+
+---
+
+### **2. The Executor (Claude)**
+
+This is your primary researcher, responsible for:
+
+- Following the research plan step by step
+- Managing interactions with various research tools
+- Synthesizing information from multiple sources
+- Maintaining research coherence
+
+```python
+
+def plan_execute(message_list, plan):
+    messages = [
+        {'role': 'user', 'content': plan}
+    ]
+    
+    response = anthropic_client.messages.create(
+        model="claude-3-5-haiku-20241022",
+        max_tokens=1024,
+        system=claude_system_prompt,
+        tools=TOOLS,
+        messages=messages
+    )
+
+    messages.append({"role": "assistant", "content": response.content})
+    final_answer = ""
+ 
+    while response.stop_reason == "tool_use":
+        if response.content and len(response.content) > 0:
+            text_block = response.content[0]
+            if hasattr(text_block, 'text') and text_block.text:
+                print("\nModel Response:", text_block.text)
+            print("-" * 80)
+
+        tool = response.content[-1]
+        print("\nCalling Tool:", tool.name)
+        print("-" * 80)
+
+        if (tool.name and tool.name == 'instructions_complete'):
+            final_answer = tool.input
+            print("\n", final_answer)
+            print("-" * 80)
+            break
+
+        if tool.name in function_mapping:
+            input_arguments_str = tool.input
+            print("\nInput Arguments:", input_arguments_str)
+            print("-" * 80)
+            res = function_mapping[tool.name](**input_arguments_str)
+            print("\nTool Response:", res)
+            print("-" * 80)
+        else:
+            raise ValueError(f"Unknown tool: {tool.name}")
+            
+        messages.append({"role": "user", "content": [{
+            "type": "tool_result",
+            "tool_use_id": tool.id,
+            "content": res
+        }]})
+
+        response = anthropic_client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=1024,
+            system=claude_system_prompt,
+            tools=TOOLS,
+            messages=messages
+        )
+        messages.append({"role": "assistant", "content": response.content})
+
+    return messages
+```
+
+The executor implements a Claude-based tool execution loop that follows the instructions outlined in the research plan until the end goal is achieved. This process ensures that each step of the research is methodically completed while dynamically adapting to any unexpected challenges. The execution loop involves parsing the research plan into discrete, actionable tasks, iteratively calling the appropriate tools and APIs, and refining responses through multiple iterations to improve accuracy. Additionally, it maintains dependencies between sub-tasks to ensure logical flow.
+
+By leveraging Claude's reasoning capabilities, the executor not only maintains context but also evaluates the reliability of retrieved information, discerns contradictory findings, and applies logical deductions to refine the research output. This approach ensures that the research process is not just a linear retrieval pipeline but a reasoning-driven system that enhances depth and accuracy. This iterative execution framework ensures that research is both structured and flexible, optimizing efficiency and coherence.
+
+You can improve this simple loop to perform any complex task. OpenAI Operator, Claude computer and any new Agent framework is a simple loop operation.
+
+---
+
+### **3. The Information Retriever (Perplexity AI)**
+
+This tool is provided to the executor to enhance research capabilities. It assists in performing targeted web searches, extracting relevant information, maintaining proper citation tracking, and ensuring information accuracy. By integrating directly with the executor's workflow, it ensures that research remains well-sourced, up-to-date, and contextually relevant.
+
+
+```python
+def search_web(query):
+    client = OpenAI(api_key=os.environ["PERPLEXITYAI_API_KEY"], base_url="https://api.perplexity.ai")
+    
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an artificial intelligence assistant and you need to answer like a Data collection engine with as much information as possible.",
+        },
+        {   
+            "role": "user",
+            "content": query,
+        },
+    ]
+
+    response = client.chat.completions.create(
+        model="sonar",
+        messages=messages,
+    )
+    
+    try:
+        response = client.chat.completions.create(
+            model="sonar",
+            messages=messages,
+        )
+        
+        if not response.choices:
+            logger.error("No response choices available")
+            return "Error: No response received from the search"
+            
+        content = response.choices[0].message.content
+        return content
+        
+    except Exception as e:
+        logger.error(f"Error during web search: {str(e)}")
+        return f"Error during search: {str(e)}"
+```
+
+You should be able to replace the web search tool with any tool you can think of.Exa.ai,Tavily and others too. Dont bog down on Perplexity. 
+---
+
+## **Future Enhancements**
+
+To further improve our system, we are focusing on:
+
+- **Automated fact-checking** to enhance research reliability. Rather than relying solely on web search, We should restrict to trusted sources only.
+- **Improved context retention** using vector databases or Graph based Memory like Zep
+- **Fine-tuned LLMs** for domain-specific research. We will do a distillation of Anthropic's Claude to create our own LLM for research. Cost benefit.
+- **Enhanced RAG capabilities** to handle more complex queries also bring your own data rather than relying on web search
+
+We are also integrating [**Storm**](https://github.com/stanford-oval/storm) and [**Omnithink**](https://github.com/zjunlp/OmniThink)—two frameworks that refine LLM research through structured reasoning and advanced knowledge retrieval. Storm focuses on multi-agent orchestration and dynamic knowledge retrieval, while Omnithink enhances logical inference and structured reasoning in LLMs. By leveraging these improvements, we aim to make AI-driven research more **scalable, structured, and insightful**.
+
+---
+
+## **Conclusion**
+
+Using a reasoning-driven LLM architecture, we enhance the way research is conducted at scale. By breaking down complex queries into structured tasks, **applying logical reasoning**, and leveraging **automated research tools**, we improve research depth, coherence, and efficiency.
+
+This is just the beginning. With advancements in **LLMs, reasoning models, and RAG**, we are continually refining our approach to **AI-driven research**.
+
+For access to the complete code, visit the GitHub Gist: [Full Code Implementation](https://gist.github.com/apprakash/0cb10d780e61dcd75e42d722bfa6bd3f)
